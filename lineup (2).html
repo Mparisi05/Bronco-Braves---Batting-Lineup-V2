@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bronco Braves – Batting Lineup</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1d23; font-family: 'DM Sans', sans-serif; color: #e8e6e1; }
+
+  /* ===== SCREEN ===== */
+  .screen-only { max-width: 520px; margin: 0 auto; padding: 16px 16px 100px; }
+  .header { text-align: center; padding: 20px 0 16px; }
+  .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+  .header p { color: #6b7280; font-size: 13px; margin-top: 4px; }
+
+  .card { background: #23272f; border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid #2d3340; }
+  .card h2 { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+  .card h2 span { color: #6b7280; font-weight: 500; margin-left: 8px; font-size: 12px; }
+
+  .game-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .field-label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; display: block; margin-bottom: 4px; }
+  .field-input {
+    width: 100%; padding: 8px; background: #1a1d23; border: 1px solid #3b4252;
+    border-radius: 6px; color: #e8e6e1; font-size: 13px; font-family: inherit;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+
+  /* Lineup rows */
+  .lineup-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 4px;
+    border-radius: 8px; background: #1a1d23; border: 1px solid transparent;
+    cursor: grab; user-select: none; transition: background 0.15s, border 0.15s;
+  }
+  .lineup-row.dragging { opacity: 0.5; background: #2d3a50; }
+  .lineup-row.drag-over { border: 1px dashed #4a90d9; background: #2a3040; }
+  .order-num {
+    width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;
+  }
+  .order-num.field { background: #2563eb22; color: #60a5fa; }
+  .order-num.bench { background: #6b728022; color: #6b7280; }
+  .jersey { font-size: 16px; font-weight: 800; width: 32px; text-align: center; flex-shrink: 0; }
+  .pname { flex: 1; font-size: 14px; font-weight: 600; color: #c9cdd4; }
+  .arrows { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .arrows button {
+    background: none; border: none; cursor: pointer; color: #6b7280;
+    font-size: 14px; padding: 0 4px; line-height: 1;
+  }
+  .arrows button:disabled { color: #333; cursor: default; }
+  .btn-out {
+    background: none; border: 1px solid #3b4252; border-radius: 6px;
+    color: #ef4444; cursor: pointer; padding: 3px 8px; font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .btn-back {
+    background: #2563eb33; border: none; border-radius: 6px;
+    color: #60a5fa; cursor: pointer; padding: 4px 10px; font-size: 11px; font-weight: 700;
+  }
+  .absent-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    margin-bottom: 4px; border-radius: 8px; background: #1a1d23; opacity: 0.5;
+  }
+  .absent-row .pname { text-decoration: line-through; }
+
+  .btn-print {
+    width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none;
+    border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px;
+  }
+
+  /* ===== PRINT ===== */
+  .print-only { display: none; }
+
+  .print-grid {
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    gap: 16px; width: 100%; height: 100vh; padding: 8px;
+  }
+  .lineup-card {
+    border: 2px solid #222; border-radius: 4px; padding: 10px 12px;
+    font-family: 'Courier Prime', 'Courier New', monospace; font-size: 11px;
+    line-height: 1.3; background: #fff; color: #000;
+  }
+  .lineup-card .card-header {
+    text-align: center; border-bottom: 2px solid #222; padding-bottom: 5px; margin-bottom: 6px;
+  }
+  .lineup-card .card-header .team-name {
+    font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .lineup-card .card-header .game-info {
+    display: flex; justify-content: space-between; font-size: 10px; margin-top: 3px; color: #444;
+  }
+  .lineup-card table { width: 100%; border-collapse: collapse; }
+  .lineup-card thead tr {
+    border-bottom: 1.5px solid #222; font-size: 9px; text-transform: uppercase;
+    letter-spacing: 1px; color: #666;
+  }
+  .lineup-card th, .lineup-card td { padding: 2.5px 0; text-align: left; }
+  .lineup-card th:first-child { width: 18px; }
+  .lineup-card th:nth-child(2) { width: 22px; }
+  .lineup-card .pos-cell { text-align: center; width: 30px; border-left: 0.5px solid #ccc; }
+  .lineup-card tbody tr:nth-child(odd) { background: #f7f7f2; }
+  .lineup-card .jersey-cell { font-weight: 800; font-size: 12px; }
+  .lineup-card .name-cell { font-weight: 600; }
+  .lineup-card .order-cell { font-weight: 700; font-size: 10px; color: #888; }
+  .lineup-card .qab-cell { width: 22px; padding: 1.5px 2px; text-align: center; }
+  .lineup-card .qab-box {
+    display: inline-block; width: 16px; height: 16px; border: 1.5px solid #444;
+    border-radius: 2px; vertical-align: middle;
+  }
+  .lineup-card .qab-header { font-size: 8px; text-align: center; width: 22px; padding: 2px; color: #666; letter-spacing: 0; }
+
+  @media print {
+    .screen-only { display: none !important; }
+    .print-only { display: block !important; position: absolute; top: 0; left: 0; width: 100vw; }
+    @page { size: landscape; margin: 0.25in; }
+    body, html { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN VIEW ===== -->
+<div class="screen-only" id="app">
+  <div class="header">
+    <h1>⚾ Bronco Braves</h1>
+    <p>Batting Lineup Manager</p>
+  </div>
+
+  <!-- Game Info -->
+  <div class="card">
+    <div class="game-grid">
+      <div>
+        <label class="field-label">Opponent</label>
+        <input class="field-input" id="opponent" placeholder="Team name">
+      </div>
+      <div>
+        <label class="field-label">Date</label>
+        <input class="field-input" id="gameDate" type="date">
+      </div>
+      <div>
+        <label class="field-label">Time</label>
+        <input class="field-input" id="gameTime" placeholder="6:00 PM">
+      </div>
+    </div>
+  </div>
+
+  <!-- Batting Order -->
+  <div class="card">
+    <h2>Batting Order <span id="batterCount"></span></h2>
+    <div id="lineupList"></div>
+  </div>
+
+  <!-- Absent -->
+  <div class="card" id="absentCard" style="display:none;">
+    <h2 style="color:#ef4444;opacity:0.8;">Absent (<span id="absentCount"></span>)</h2>
+    <div id="absentList"></div>
+  </div>
+
+  <button class="btn-print" onclick="handlePrint()">🖨️ Print Lineup Cards</button>
+</div>
+
+<!-- ===== PRINT VIEW ===== -->
+<div class="print-only" id="printView">
+  <div class="print-grid" id="printGrid"></div>
+</div>
+
+<script>
+const ROSTER = [
+  { number: 24, name: "J. Reinhardt" },
+  { number: 23, name: "H. Reinhardt" },
+  { number: 67, name: "B. Cox" },
+  { number: 7,  name: "R. Sullivan" },
+  { number: 44, name: "G. Williams" },
+  { number: 4,  name: "C. Coleman" },
+  { number: 9,  name: "M. Cage" },
+  { number: 8,  name: "M. Warren" },
+  { number: 16, name: "L. Fraser" },
+  { number: 27, name: "N. Crosby" },
+  { number: 99, name: "G. Sprague" },
+  { number: 2,  name: "F. Butler" },
+];
+const playerMap = {};
+ROSTER.forEach(p => playerMap[p.number] = p);
+
+let lineup = [24, 23, 7, 4, 9, 16, 44, 67, 2, 27, 8, 99];
+let absent = new Set();
+let dragIdx = null;
+
+// Set today's date
+document.getElementById("gameDate").value = new Date().toISOString().split("T")[0];
+
+function getActive() { return lineup.filter(n => !absent.has(n)); }
+function getAbsent() { return lineup.filter(n => absent.has(n)); }
+
+function render() {
+  const active = getActive();
+  const abs = getAbsent();
+
+  // Batter count
+  document.getElementById("batterCount").textContent = active.length + " batters";
+
+  // Active lineup
+  const list = document.getElementById("lineupList");
+  list.innerHTML = "";
+  active.forEach((num, idx) => {
+    const p = playerMap[num];
+    const row = document.createElement("div");
+    row.className = "lineup-row";
+    row.draggable = true;
+    row.dataset.idx = idx;
+
+    row.addEventListener("dragstart", e => {
+      dragIdx = idx;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => {
+      dragIdx = null;
+      row.classList.remove("dragging");
+      document.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    });
+    row.addEventListener("dragover", e => {
+      e.preventDefault();
+      row.classList.add("drag-over");
+    });
+    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      row.classList.remove("drag-over");
+      if (dragIdx === null || dragIdx === idx) return;
+      const dragNum = active[dragIdx];
+      const dropNum = active[idx];
+      const newLineup = [...lineup];
+      const ri = newLineup.indexOf(dragNum);
+      const rj = newLineup.indexOf(dropNum);
+      newLineup.splice(ri, 1);
+      newLineup.splice(rj, 0, dragNum);
+      lineup = newLineup;
+      render();
+    });
+
+    row.innerHTML = `
+      <div class="order-num ${idx < 9 ? 'field' : 'bench'}">${idx + 1}</div>
+      <div class="jersey">${num}</div>
+      <div class="pname">${p.name}</div>
+      <div class="arrows">
+        <button ${idx === 0 ? 'disabled' : ''} onclick="moveUp(${idx})">▲</button>
+        <button ${idx === active.length - 1 ? 'disabled' : ''} onclick="moveDown(${idx})">▼</button>
+      </div>
+      <button class="btn-out" onclick="markAbsent(${num})">OUT</button>
+    `;
+    list.appendChild(row);
+  });
+
+  // Absent
+  const absentCard = document.getElementById("absentCard");
+  const absentList = document.getElementById("absentList");
+  if (abs.length > 0) {
+    absentCard.style.display = "";
+    document.getElementById("absentCount").textContent = abs.length;
+    absentList.innerHTML = "";
+    abs.forEach(num => {
+      const p = playerMap[num];
+      const row = document.createElement("div");
+      row.className = "absent-row";
+      row.innerHTML = `
+        <div class="jersey">${num}</div>
+        <div class="pname">${p.name}</div>
+        <button class="btn-back" onclick="markPresent(${num})">ADD BACK</button>
+      `;
+      absentList.appendChild(row);
+    });
+  } else {
+    absentCard.style.display = "none";
+  }
+
+  // Update print cards
+  renderPrintCards();
+}
+
+function moveUp(idx) {
+  const active = getActive();
+  if (idx === 0) return;
+  const a = active[idx], b = active[idx - 1];
+  const ri = lineup.indexOf(a), rj = lineup.indexOf(b);
+  lineup[ri] = b; lineup[rj] = a;
+  render();
+}
+
+function moveDown(idx) {
+  const active = getActive();
+  if (idx >= active.length - 1) return;
+  const a = active[idx], b = active[idx + 1];
+  const ri = lineup.indexOf(a), rj = lineup.indexOf(b);
+  lineup[ri] = b; lineup[rj] = a;
+  render();
+}
+
+function markAbsent(num) {
+  absent.add(num);
+  render();
+}
+
+function markPresent(num) {
+  absent.delete(num);
+  render();
+}
+
+function renderPrintCards() {
+  const active = getActive();
+  const opp = document.getElementById("opponent").value || "___________";
+  const rawDate = document.getElementById("gameDate").value;
+  const dateStr = rawDate
+    ? new Date(rawDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "______";
+  const time = document.getElementById("gameTime").value || "____";
+
+  let tableRows = "";
+  active.forEach((num, i) => {
+    const p = playerMap[num];
+    tableRows += `
+      <tr>
+        <td class="order-cell">${i + 1}</td>
+        <td class="jersey-cell">${num}</td>
+        <td class="name-cell">${p.name}</td>
+        <td class="pos-cell"></td>
+        <td class="qab-cell"><span class="qab-box"></span></td>
+        <td class="qab-cell"><span class="qab-box"></span></td>
+        <td class="qab-cell"><span class="qab-box"></span></td>
+        <td class="qab-cell"><span class="qab-box"></span></td>
+      </tr>`;
+  });
+
+  const cardHTML = `
+    <div class="lineup-card">
+      <div class="card-header">
+        <div class="team-name">Bronco Braves</div>
+        <div class="game-info">
+          <span>vs ${opp}</span>
+          <span>${dateStr}</span>
+          <span>${time}</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th></th><th>Name</th><th class="pos-cell">Pos</th><th class="qab-header">1</th><th class="qab-header">2</th><th class="qab-header">3</th><th class="qab-header">4</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById("printGrid").innerHTML = cardHTML + cardHTML + cardHTML + cardHTML;
+}
+
+// Re-render print cards when game info changes
+["opponent", "gameDate", "gameTime"].forEach(id => {
+  document.getElementById(id).addEventListener("input", renderPrintCards);
+});
+
+function handlePrint() { window.print(); }
+
+// Initial render
+render();
+</script>
+</body>
+</html>
